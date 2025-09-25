@@ -1,0 +1,95 @@
+name: CI/CD Pipeline with GCR + Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # required for semantic-release
+
+      # 2. Setup Node.js (for semantic-release + tests)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # 3. Install dependencies in root (semantic-release config lives here)
+      - name: Install root deps
+        run: npm ci
+
+      # 4. Run semantic-release to calculate next version
+      - name: Run semantic-release
+        id: semantic
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # semantic-release outputs new version as "nextRelease.version"
+
+      # # 5. Run tests for backend1
+      # - name: Test Backend1
+      #   working-directory: ./backend1
+      #   run: |
+      #     npm ci
+      #     npm test
+
+      # # 6. Run tests for backend2
+      # - name: Test Backend2
+      #   working-directory: ./backend2
+      #   run: |
+      #     npm ci
+      #     npm test
+
+      # 7. Run tests for frontend
+      - name: Test Frontend
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm test
+
+      # 8. Authenticate to GCP
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      # # 9. Build & push backend1
+      # - name: Build & Push Backend1
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     context: ./backend1
+      #     push: true
+      #     tags: |
+      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend1:${{ github.sha }}
+      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend1:v${{ steps.semantic.outputs.new_release_version }}
+
+      # # 10. Build & push backend2
+      # - name: Build & Push Backend2
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     context: ./backend2
+      #     push: true
+      #     tags: |
+      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend2:${{ github.sha }}
+      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend2:v${{ steps.semantic.outputs.new_release_version }}
+
+      # 11. Build & push frontend
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            gcr.io/${{ secrets.GCP_PROJECT_ID }}/frontend:${{ github.sha }}
+            gcr.io/${{ secrets.GCP_PROJECT_ID }}/frontend:v${{ steps.semantic.outputs.new_release_version }}
