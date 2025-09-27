@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   release-build-deploy:
     runs-on: ubuntu-latest
@@ -46,7 +51,9 @@ jobs:
 
       # 4. Run tests
       - name: Run tests
-        run: pnpm test --coverage --watchAll=false
+        run: pnpm test:ci
+        env:
+          CI: true
 
       # 5. Build the application
       - name: Build application
@@ -55,43 +62,24 @@ jobs:
       # 6. Run semantic-release to calculate next version
       - name: Run semantic-release
         id: semantic
-        run: |
-          pnpm add --save-dev semantic-release @semantic-release/git @semantic-release/github
-          npx semantic-release
+        run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 8. Authenticate to GCP
+      # 7. Authenticate to GCP (only if secrets are available)
       - name: Authenticate to GCP
+        if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Configure Docker for GCR
+        if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
         run: gcloud auth configure-docker gcr.io --quiet
 
-      # # 9. Build & push backend1
-      # - name: Build & Push Backend1
-      #   uses: docker/build-push-action@v4
-      #   with:
-      #     context: ./backend1
-      #     push: true
-      #     tags: |
-      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend1:${{ github.sha }}
-      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend1:v${{ steps.semantic.outputs.new_release_version }}
-
-      # # 10. Build & push backend2
-      # - name: Build & Push Backend2
-      #   uses: docker/build-push-action@v4
-      #   with:
-      #     context: ./backend2
-      #     push: true
-      #     tags: |
-      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend2:${{ github.sha }}
-      #       gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend2:v${{ steps.semantic.outputs.new_release_version }}
-
-      # 8. Build & push frontend
+      # 8. Build & push frontend (only if secrets are available)
       - name: Build & Push Frontend
+        if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
         uses: docker/build-push-action@v4
         with:
           context: .
