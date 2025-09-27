@@ -68,18 +68,18 @@ jobs:
 
       # 7. Authenticate to GCP (only if secrets are available)
       - name: Authenticate to GCP
-        if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
+        # if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Configure Docker for GCR
-        if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
+        # if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
         run: gcloud auth configure-docker gcr.io --quiet
 
       # 8. Build & push frontend (only if secrets are available)
       - name: Build & Push Frontend
-        if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
+        # if: env.GCP_SA_KEY != '' && env.GCP_PROJECT_ID != ''
         uses: docker/build-push-action@v4
         with:
           context: .
