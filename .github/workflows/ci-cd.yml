@@ -46,7 +46,7 @@ jobs:
 
       # 4. Run tests
       - name: Run tests
-        run: pnpm test -- --coverage --watchAll=false
+        run: pnpm test --coverage --watchAll=false
 
       # 5. Build the application
       - name: Build application
